@@ -1,0 +1,67 @@
+# Review rubric
+
+## The fresh-context rule
+
+The reviewer sees three things: the diff, the repository, and the intent the PR description claims. It never sees the transcript, the session, or the reasoning that produced the code. A review run inside the authoring session is not a review—it's the same mind agreeing with itself, and it will confirm whatever the author already believed. If you are reading this in the session that wrote the code, stop and hand the PR to a fresh one.
+
+Fresh context is the requirement; the mechanism is not. Either of these qualifies:
+
+- **A new cloud session**, opened against the repository and given the PR number.
+- **A subagent spawned by the authoring session.** A subagent has its own context window and does not inherit the transcript, so it meets the rule as written. A forked subagent is the exception: a fork inherits the authoring transcript wholesale, so it is the authoring context under another name and does not qualify.
+
+What disqualifies a review is the authoring context reaching the reviewer, not which of the two supplied it.
+
+## Choosing the reviewer
+
+The author picks the model: **Sonnet for straightforward changes, Opus for substantial or judgment-heavy ones.** The pick is made before invoking, and it is the author's own assessment of how hard the change is to get right—not how long it took to write. A change that is short but touches auth, money, data loss, or anything ruled is judgment-heavy.
+
+That assessment never reaches the reviewer. It selects who reviews; it is not part of the prompt.
+
+## Invoking a review
+
+A review is handed nothing but the repository and a number: **"Review PR #N per REVIEW.md"**. Nothing else—no summary, no context, no explanation of what the author was trying to do—because everything the reviewer is allowed to know is already in the repo and the PR description.
+
+When the authoring session spawns the reviewer, that prompt is the whole prompt, verbatim. The author writes no framing of any kind—not the shape of the change, not how long it should take, and above all not that it is small. Handing the reviewer the author's own belief about the change defeats the point of asking someone else, and "this one's trivial" is the belief most likely to be the thing that's wrong.
+
+## The verdict lands on the PR
+
+The review is posted as a comment on the PR, with `gh`, **before the merge**. The audit trail lives on the PR, not in a session nobody will reopen. Whoever merges records the reviewing model in the PR's Provenance section.
+
+The reviewer posts its own comment where it can reach GitHub. Where it can't, the author posts the review verbatim, including the findings it disagrees with; disagreement goes in a reply underneath, never into the text. An author's summary of a review of their own work is not the review, and the record has to survive the author disagreeing with it.
+
+## After a fix: when to re-review
+
+A review that produced changes does not automatically need a second review. The line:
+
+- **Typo, comment, rename, formatting**—merge once CI re-greens. No second review.
+- **Anything touching logic or control flow, and anything that touches what the review flagged**—back to a **new** fresh reviewer, at the model the fix's own complexity calls for.
+
+The reviewer who wrote the finding is not the one who checks the fix: it has now seen the author's reasoning about that code and is no longer fresh on it.
+
+## The checks
+
+**Does it do what the Intent section claims?** Read the intent first, then the diff. If the diff does something the intent doesn't describe, that's a finding even when the extra thing is good.
+
+**Does it stay inside the declared blast radius?** Anything changed outside what the PR said it would touch gets named, whether or not it looks harmless.
+
+**Security**, where the change reaches any of these:
+- **Queries**: parameterized only. String-built queries are a finding, no exceptions and no "the input is safe here."
+- **Output**: anything reaching a page, a template, or a response is escaped for where it lands. User input, stored values, URL parameters.
+- **Auth**: anything that is supposed to be gated actually checks, and checks *before* it does the work rather than after.
+- **Uploads and other untrusted input**: type and size validated, stored where it cannot be executed, never named from user input.
+
+**Does it touch secrets, database schema, or shared directories—and does the PR say so?** Credentials never live in the repository. A schema change or a shared-directory change that isn't declared in the PR is a finding on its own, because the PR description is what R.J. reads.
+
+**Comment discipline**, per the comment law. Bloated comments are a rubric violation, not a style preference: they pad the diff and make it unreadable, and the diff is R.J.'s only window into work he didn't write.
+
+**Does the PR assert anything a reader of this repository cannot check?** Claims about what a server does, what a deploy ships, what a service returns, what another repo contains—none of that is verifiable from here, and agreeing with it is not review. A repo's `CLAUDE.md` is not evidence on any of it: it is repo memory, and it has been wrong.
+
+**Would anything here surprise the person who reads only the PR description?** If yes, say what and why. This is the catch-all, and in practice it's the check that earns its keep.
+
+## Findings
+
+Say what's wrong, where, and what it would cost. Distinguish "this will break" from "I'd have done it differently"—the second is worth saying once and never worth blocking on.
+
+---
+
+This file gets edited the day a review misses something—or the day one is skipped and the skip costs something. It is the review culture, versioned.
