@@ -19,6 +19,8 @@ That assessment never reaches the reviewer. It selects who reviews; it is not pa
 
 ## Invoking a review
 
+A reviewer fetching this rubric by URL fetches the raw text (`curl` on the raw.githubusercontent.com address), never through a summarizing fetch tool—summarizers have paraphrased and garbled this document, and a review against a paraphrase is a review of a different rubric.
+
 A review is handed nothing but the repository and a number: **"Review PR #N per REVIEW.md"**. Nothing else—no summary, no context, no explanation of what the author was trying to do—because everything the reviewer is allowed to know is already in the repo and the PR description.
 
 When the authoring session spawns the reviewer, that prompt is the whole prompt, verbatim. The author writes no framing of any kind—not the shape of the change, not how long it should take, and above all not that it is small. Handing the reviewer the author's own belief about the change defeats the point of asking someone else, and "this one's trivial" is the belief most likely to be the thing that's wrong.
