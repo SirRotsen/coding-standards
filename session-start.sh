@@ -25,14 +25,16 @@ emit REVIEW.md
 cd "${CLAUDE_PROJECT_DIR:-$(dirname "$0")/../..}" 2>/dev/null || exit 0
 git rev-parse --git-dir >/dev/null 2>&1 || exit 0
 
-# Ask the remote for a ref listing before paying for a fetch: a repo with no
-# deploy branch says nothing below, and `ls-remote` answers that for the price
-# of a ref advertisement instead of a full fetch. The local `origin/deploy` ref
-# can't answer it—a clone made before the deploy branch existed has never seen
-# it, and gating the fetch on the stale ref would keep it from ever seeing it.
-git ls-remote --exit-code --heads --quiet origin deploy >/dev/null 2>&1 || exit 0
-
-git fetch --quiet origin main deploy 2>/dev/null || true
+# A ref advertisement costs a fraction of a fetch, and it answers the only
+# question a repo without a deploy branch needs answered. The local
+# `origin/deploy` can't answer it: a clone made before the branch existed has
+# never seen it, so gating on that ref would keep it from ever seeing it.
+git ls-remote --exit-code --heads --quiet origin deploy >/dev/null 2>&1
+case $? in
+  0) git fetch --quiet origin main deploy 2>/dev/null || true ;;
+  2) exit 0 ;;  # the remote has no deploy branch: nothing to report, ever.
+  *) : ;;       # unreachable remote: report from whatever is already cached.
+esac
 
 git rev-parse --verify --quiet origin/main >/dev/null || exit 0
 git rev-parse --verify --quiet origin/deploy >/dev/null || exit 0
