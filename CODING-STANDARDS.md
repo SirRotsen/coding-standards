@@ -63,6 +63,20 @@ Rounds are surgical: touch only what the round names; anything else you notice c
 
 A task titled "test X" almost always means _try X and see if it works_, not _build test infrastructure for X_. When a task is a bare title with no body, ask what it means before acting on it.
 
+## Filing work into HQ
+
+If the environment carries an `HQ_DROP_TOKEN` variable, this session can file a task into R.J.'s task system:
+
+```bash
+curl -s -X POST https://api.hqforaction.com/v1/drops \
+  -H "Authorization: Bearer $HQ_DROP_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"kind":"task","title":"<start with a verb>","body":"<optional detail>","scheduled_for":"YYYY-MM-DD"}'
+```
+
+`kind` and `title` are required; `body`, `project` (an HQ project name), and `scheduled_for` are optional. For a project idea, `"kind":"project"` with the pitch in `body`—it arrives as a kickoff task, not a project. Error responses carry a `hint` saying what to send instead; follow it. The drop appears in his vault within about five minutes.
+
+Use it when R.J. asks for something to be filed, or when work surfaces something only he can do (a credential to rotate, a decision, a purchase)—say you're filing it, keep the title one plain-English line, and put the pointers a future session needs in the body. It creates tasks and nothing else; never put a credential in one. If the variable is absent, this pipe doesn't exist here—don't ask for a token.
+
 ## Writing for R.J.
 
 R.J. is not a coder. He is sharp about data design—how things relate, what belongs where, which distinctions are real—and every ruling on the model is his. What loses him is jargon. A sentence packed with class names, framework terms and acronyms does not read to him as precise; it reads as noise, and he stops taking it in.
