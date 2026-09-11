@@ -25,16 +25,24 @@ emit REVIEW.md
 cd "${CLAUDE_PROJECT_DIR:-$(dirname "$0")/../..}" 2>/dev/null || exit 0
 git rev-parse --git-dir >/dev/null 2>&1 || exit 0
 
-git fetch --quiet origin main deploy 2>/dev/null || true
+# A ref advertisement costs a fraction of a fetch, and it answers the only
+# question a repo without a deploy branch needs answered. The local
+# `origin/deploy` can't answer it: a clone made before the branch existed has
+# never seen it, so gating on that ref would keep it from ever seeing it.
+git ls-remote --exit-code --heads --quiet origin deploy >/dev/null 2>&1
+case $? in
+  0) git fetch --quiet origin main deploy 2>/dev/null || true ;;
+  2) exit 0 ;;  # the remote has no deploy branch: nothing to report, ever.
+  *) : ;;       # unreachable remote: report from whatever is already cached.
+esac
 
 git rev-parse --verify --quiet origin/main >/dev/null || exit 0
-# No deploy branch means this repo doesn't publish by merge; say nothing.
 git rev-parse --verify --quiet origin/deploy >/dev/null || exit 0
 
 printf '\n'
 ahead=$(git rev-list --count origin/deploy..origin/main 2>/dev/null || echo 0)
 if [ "$ahead" -gt 0 ]; then
-  echo "Publish state: main is $ahead commit(s) ahead of deploy—merged work has NOT shipped. Publishing is merging main into deploy (see CLAUDE.md, Shipping)."
+  echo "Publish state: main is $ahead commit(s) ahead of deploy—merged work has NOT shipped. Publishing is merging main into deploy, unless this repo's CLAUDE.md says otherwise."
   git --no-pager log --oneline origin/deploy..origin/main | head -5 | sed 's/^/  /'
 else
   echo "Publish state: main and deploy match—everything merged is live."
