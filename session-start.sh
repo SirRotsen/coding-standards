@@ -25,12 +25,17 @@ emit REVIEW.md
 cd "${CLAUDE_PROJECT_DIR:-$(dirname "$0")/../..}" 2>/dev/null || exit 0
 git rev-parse --git-dir >/dev/null 2>&1 || exit 0
 
-# Decide before fetching: a repo that doesn't publish by merge says nothing,
-# and shouldn't pay for a network round trip whose result it discards.
-git rev-parse --verify --quiet origin/main >/dev/null || exit 0
-git rev-parse --verify --quiet origin/deploy >/dev/null || exit 0
+# Ask the remote for a ref listing before paying for a fetch: a repo with no
+# deploy branch says nothing below, and `ls-remote` answers that for the price
+# of a ref advertisement instead of a full fetch. The local `origin/deploy` ref
+# can't answer it—a clone made before the deploy branch existed has never seen
+# it, and gating the fetch on the stale ref would keep it from ever seeing it.
+git ls-remote --exit-code --heads --quiet origin deploy >/dev/null 2>&1 || exit 0
 
 git fetch --quiet origin main deploy 2>/dev/null || true
+
+git rev-parse --verify --quiet origin/main >/dev/null || exit 0
+git rev-parse --verify --quiet origin/deploy >/dev/null || exit 0
 
 printf '\n'
 ahead=$(git rev-list --count origin/deploy..origin/main 2>/dev/null || echo 0)
