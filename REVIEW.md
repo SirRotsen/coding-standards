@@ -21,7 +21,7 @@ A PR skips review only when every changed line is one of these:
 
 Never exempt, whatever the diff looks like: any file an agent loads as instructions (`CLAUDE.md`, `CODING-STANDARDS.md`, `REVIEW.md`, skills, hook scripts), CI workflows, configuration, and anything touching sign-in, money, stored data, or deploys. When unsure, it is not exempt—the author judging its own change trivial is the judgment this rubric exists to check.
 
-An exempt PR still opens as a draft and still passes CI. Its Provenance section names the exemption: "Review skipped: comments only."
+An exempt PR opens the way the repo's CI calls for—draft, or ready where drafts still run CI—and still passes CI. Its Provenance section names the exemption: "Review skipped: comments only."
 
 ## Choosing the reviewer
 
@@ -39,7 +39,7 @@ When the authoring session spawns the reviewer, that prompt is the whole prompt,
 
 ## The verdict lands on the PR
 
-The review is posted as a comment on the draft PR, with `gh`, **before the PR is marked ready**. The audit trail lives on the PR, not in a session nobody will reopen. Whoever merges records the reviewing model in the PR's Provenance section.
+The review is posted as a comment on the draft PR, with `gh`, **before the PR is marked ready**. Where the repo's CI has not yet been taught to skip drafts and the PR is therefore opened ready, the review posts as the PR's first comment instead. The audit trail lives on the PR, not in a session nobody will reopen. Whoever merges records the reviewing model in the PR's Provenance section.
 
 The reviewer posts its own comment where it can reach GitHub. Where it can't, the author posts the review verbatim, including the findings it disagrees with; disagreement goes in a reply underneath, never into the text. An author's summary of a review of their own work is not the review, and the record has to survive the author disagreeing with it.
 
