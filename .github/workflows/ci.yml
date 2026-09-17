@@ -1,0 +1,64 @@
+name: ci
+
+# This repo is the runtime source of the code 21 others execute at session
+# start, and the no-version-pin decision rests on merging here being the gate.
+# A gate nothing runs is a claim, so the bootstrap's refusals are tested here.
+
+on:
+  pull_request:
+    # ready_for_review is not a default type, and the job skips drafts — with
+    # only the `if:`, a PR marked ready would report no check and never merge.
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: ci
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The bootstrap refuses what it must
+        run: bash tests/test-bootstrap.sh "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Every payload is a runnable script
+        run: |
+          set -eu
+          count=0
+          for f in payload/*; do
+            head -c 2 "$f" | grep -q '^#!' || { echo "::error::$f has no shebang"; exit 1; }
+            [ -x "$f" ] || { echo "::error::$f is not executable"; exit 1; }
+            count=$((count + 1))
+          done
+          # A loop over an empty directory would report success having checked
+          # nothing, which is the failure mode this gate exists to prevent.
+          [ "$count" -gt 0 ] || { echo "::error::no payloads found"; exit 1; }
+          echo "checked $count payload(s)"
+
+      - name: Shell scripts parse
+        run: |
+          set -eu
+          sh -n bin/hq
+          bash -n payload/session-start
+          bash -n tests/test-bootstrap.sh
+          python3 -c "import ast,sys; ast.parse(open('payload/drop').read())"
+
+      - name: Workflows are valid YAML
+        run: |
+          python3 - <<'PY'
+          import glob, sys, yaml
+
+          files = glob.glob('workflows/*.yml') + glob.glob('.github/workflows/*.yml')
+          if not files:
+              print('::error::no workflow files found')
+              sys.exit(1)
+          for f in files:
+              yaml.safe_load(open(f))
+          print(f'checked {len(files)} workflow(s)')
+          PY

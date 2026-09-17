@@ -10,7 +10,7 @@
 # prep is the standing example.
 set -uo pipefail
 
-BASE="${CODING_STANDARDS_BASE:-https://raw.githubusercontent.com/SirRotsen/coding-standards/main}"
+BASE="${HQ_STANDARDS_BASE:-https://raw.githubusercontent.com/SirRotsen/coding-standards/main}"
 
 fetch() {
   curl -fsSL --connect-timeout 3 --max-time 10 "$BASE/$1" 2>/dev/null

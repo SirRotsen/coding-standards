@@ -10,6 +10,7 @@ The single source of truth for R.J. Nestor's coding standards across every repos
 | `payload/session-start` | What `hq session-start` runs: prints the two documents above, then the repo's publish state. |
 | `payload/drop` | What `hq drop` runs: files a task into HQ. |
 | `workflows/no-agent-thread.yml` | The CI check that refuses a PR still carrying `Agent-Messages/`. Copied into each repo's `.github/workflows/`. |
+| `tests/test-bootstrap.sh` | What `bin/hq` must keep doing, chiefly what it must refuse. Run it against a branch: `tests/test-bootstrap.sh my-branch`. |
 
 ## How a repo consumes this
 
@@ -27,6 +28,6 @@ A repo with its own session-setup needs keeps that in its own hook alongside thi
 
 ## Changing something here
 
-Through a PR, like any other repo: branch, local check, draft PR, fresh review, mark ready, merge. Merging to `main` here is what rolls a change out everywhere, which makes this repo's own review gate the compensating control for every repo fetching its logic at run time.
+Through a PR, like any other repo: branch, `tests/test-bootstrap.sh <branch>`, draft PR, fresh review, mark ready, CI, merge. Merging to `main` here is what rolls a change out everywhere, which is why this repo carries its own required check rather than resting on the claim that merging here is careful.
 
 To try a payload change before it ships, point a session at the branch: `HQ_BOOTSTRAP_REF=my-branch .claude/bin/hq session-start`.

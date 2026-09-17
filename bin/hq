@@ -4,24 +4,31 @@
 # coding-standards at run time, so a change to what `session-start` prints or
 # what `drop` sends ships from that repo alone and never needs a PR here.
 #
-# Copy to .claude/bin/hq, `chmod +x`, add `.claude/.cache/` to .gitignore, and
-# wire the two entry points in .claude/settings.json:
-#
-#   "hooks": { "SessionStart": [ { "hooks": [ { "type": "command",
-#       "command": "$CLAUDE_PROJECT_DIR/.claude/bin/hq session-start",
-#       "timeout": 20 } ] } ] },
-#   "permissions": { "allow": [ "Bash(.claude/bin/hq drop:*)" ] }
-#
-# That allow rule matches the literal text of the command: `.claude/bin/hq drop
-# ...` and nothing else—not `./.claude/bin/hq`, not an absolute path, and not
-# any other subcommand. Invoke it exactly as written or it prompts.
+# Installing it into a repo: see "How a repo consumes this" in the
+# coding-standards README, which is the one copy of those steps.
 set -u
 
 REF="${HQ_BOOTSTRAP_REF:-main}"
+
+# The ref goes into a URL path, and curl resolves `..` before sending, so an
+# unchecked ref of `../../owner/repo/main` fetches and runs code from any
+# repository on GitHub—in the one process that holds HQ_DROP_TOKEN and is
+# allowlisted to run unprompted. Ref characters only, and no dot segments.
+# --path-as-is below is the second layer: unsquashed, a traversal 404s.
+case "$REF" in
+  ''|*..*|/*|*/|*[!A-Za-z0-9._/-]*)
+    echo "hq: refusing the ref '$REF'—letters, digits, dot, dash, underscore and slash only" >&2
+    exit 2
+    ;;
+esac
+
 BASE="https://raw.githubusercontent.com/SirRotsen/coding-standards/$REF/payload"
 
 ROOT="${CLAUDE_PROJECT_DIR:-}"
-[ -n "$ROOT" ] || ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd) || exit 0
+[ -n "$ROOT" ] || ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd) || {
+  echo "hq: cannot resolve the repository root" >&2
+  [ "${1:-}" = "session-start" ] && exit 0 || exit 1
+}
 CACHE="$ROOT/.claude/.cache"
 
 cmd="${1:-}"
@@ -43,8 +50,16 @@ usable() {
 
 tmp=$(mktemp 2>/dev/null) || tmp=""
 if [ -n "$tmp" ]; then
-  if curl -fsSL --connect-timeout 3 --max-time 10 "$BASE/$cmd" -o "$tmp" 2>/dev/null && usable "$tmp"; then
-    mkdir -p "$CACHE" 2>/dev/null && cp "$tmp" "$CACHE/$cmd" 2>/dev/null && chmod +x "$CACHE/$cmd" 2>/dev/null
+  if curl -fsSL --path-as-is --connect-timeout 3 --max-time 10 "$BASE/$cmd" -o "$tmp" 2>/dev/null && usable "$tmp"; then
+    # Written beside the cache and moved into place: a copy interrupted by a
+    # full disk, a signal, or a second session starting on this checkout would
+    # still begin with a shebang and pass usable() on the next run.
+    if mkdir -p "$CACHE" 2>/dev/null && cp "$tmp" "$CACHE/$cmd.new" 2>/dev/null; then
+      chmod 0755 "$CACHE/$cmd.new" 2>/dev/null
+      mv -f "$CACHE/$cmd.new" "$CACHE/$cmd" 2>/dev/null || rm -f "$CACHE/$cmd.new"
+    else
+      echo "hq: fetched $cmd but could not write $CACHE" >&2
+    fi
   fi
   rm -f "$tmp"
 fi
@@ -60,11 +75,17 @@ if ! usable "$CACHE/$cmd"; then
   exit 1
 fi
 
-chmod +x "$CACHE/$cmd" 2>/dev/null
+chmod 0755 "$CACHE/$cmd" 2>/dev/null
 
 # The payload runs from the cache directory, so it cannot find the repository by
 # looking beside itself.
 HQ_REPO_ROOT="$ROOT"
 export HQ_REPO_ROOT
+
+# The payload fetches documents from the same ref it was itself fetched from, so
+# testing a branch tests the whole thing. It takes the validated URL from here
+# rather than re-reading HQ_BOOTSTRAP_REF, which would need validating twice.
+HQ_STANDARDS_BASE="https://raw.githubusercontent.com/SirRotsen/coding-standards/$REF"
+export HQ_STANDARDS_BASE
 
 exec "$CACHE/$cmd" "$@"
