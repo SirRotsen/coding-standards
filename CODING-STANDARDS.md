@@ -21,11 +21,13 @@ Work lands through a pull request, reviewed while still a draft and tested by CI
 2. Run the tests that reach what you touched, locally.
 3. Open the PR to `main` as a **draft**, description written.
 4. Get the fresh-context review `REVIEW.md` calls for, posted on the draft.
-5. If the review calls for changes, make them and return to step 2.
-6. Once the review is clean, mark the PR ready (`gh pr ready`). Marking ready is what runs CI.
-7. CI green: merge. CI red: put the PR back in draft (`gh pr ready --undo`), fix, and return to step 2.
+5. If the review calls for changes, make them, re-run the local tests, and go back to step 4—the PR stays open, in draft, throughout.
+6. Once the review is clean, mark the PR ready (`gh pr ready`). In a repo whose CI is set up as below, that is the event that runs it.
+7. CI green: merge. CI red: `gh pr ready --undo`, fix, and go back to step 5.
 
-**Never mark a PR ready to find out whether CI passes.** CI time is billed per run, and the draft exists so review loops cost none of it. R.J.'s ruling, 2026-09-17: "What I'm trying to prevent here is CONSTANT CI usage for tests."
+**Ready means the local tests are green and the review is clean**—never mark a PR ready to find out whether CI passes. CI time is billed per run, and the draft exists so the review loop costs none of it. R.J.'s ruling, 2026-09-17: "What I'm trying to prevent here is CONSTANT CI usage for tests."
+
+**In a repo whose CI does not yet skip drafts, every push to an open draft still runs it.** Check the workflow before step 3: if its `pull_request` trigger has no `types:` list, hold the PR until the review is clean, then open it ready—and say so in the PR description. Converting that repo's CI is worth more than any one PR's runs.
 
 **Never squash-merge a PR**—the narrative lives in the individual commits, and a squash flattens it away.
 
@@ -36,6 +38,20 @@ Work lands through a pull request, reviewed while still a draft and tested by CI
 Branch protection carries a required status check that runs the repo's real tests, with `strict` (up-to-date-before-merge) on. If `main` moved since the branch was cut, update the branch and let CI re-run on the combined result. Never merge on a judgment call that `main` "looks clear"—the combined result is the only thing that has actually been tested, and the check exists precisely because the judgment call is the part that fails.
 
 A required check is required by name. Renaming a CI job silently un-requires it.
+
+**Skipping drafts takes two changes, and one without the other blocks every merge.** GitHub's default `pull_request` trigger fires on `opened`, `synchronize` and `reopened`—not on a PR being marked ready. So the workflow needs both:
+
+```yaml
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  ci:
+    if: github.event.pull_request.draft == false
+```
+
+With only the `if:`, marking a PR ready fires an event the workflow ignores, the required check never reports, and a branch-protected PR cannot merge at all. A job skipped by that `if:` reports success to branch protection, which is harmless because GitHub refuses to merge a draft.
 
 ### Cloud-session preflight
 
