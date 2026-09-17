@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+"""hq-drop — file a task into R.J.'s HQ, or list the projects a drop may name.
+
+Owns the whole request: reads HQ_DROP_TOKEN from the environment itself, so no
+caller ever puts the token on a command line, and no transcript ever shows it.
+
+Usage:
+  .claude/bin/hq-drop projects
+  .claude/bin/hq-drop task    --title "..." [--body "..."] [--project "..."] [--scheduled-for YYYY-MM-DD]
+  .claude/bin/hq-drop project --title "..." [--body "..."]
+
+`project` must be a name exactly as `hq-drop projects` lists it, or be omitted.
+API errors are printed with their `hint` verbatim; follow the hint.
+"""
+import argparse
+import json
+import os
+import sys
+import urllib.error
+import urllib.request
+
+# Hardcoded on purpose: this command is allowlisted to run without prompting,
+# so an env-overridable host would hand the bearer token to whoever controls
+# the override. Tests monkeypatch; production never redirects.
+API_BASE = "https://api.hqforaction.com"
+TIMEOUT = 30
+
+
+def die(message, hint=None):
+    print(f"hq-drop: {message}", file=sys.stderr)
+    if hint:
+        print(f"hint: {hint}", file=sys.stderr)
+    sys.exit(1)
+
+
+def token():
+    value = (os.environ.get("HQ_DROP_TOKEN") or "").strip()
+    if not value:
+        die("HQ_DROP_TOKEN is not set in this environment",
+            "this pipe doesn't exist here; don't ask for a token")
+    return value
+
+
+def call(method, path, payload=None):
+    req = urllib.request.Request(
+        f"{API_BASE}{path}", method=method,
+        data=json.dumps(payload).encode() if payload is not None else None,
+        headers={"Authorization": f"Bearer {token()}",
+                 "Content-Type": "application/json",
+                 "Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+            return json.loads(resp.read().decode("utf-8", "replace"))
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode("utf-8", "replace") if exc.fp else ""
+        try:
+            data = json.loads(raw)
+        except ValueError:
+            data = {}
+        die(data.get("error") or f"the API returned {exc.code} {exc.reason}",
+            data.get("hint") or (raw[:400] or None))
+    except urllib.error.URLError as exc:
+        die(f"could not reach {API_BASE}: {exc.reason}")
+    except ValueError:
+        die("the API returned something that isn't JSON")
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="hq-drop", add_help=True)
+    sub = parser.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("projects", help="List the project names a drop may use")
+    for kind in ("task", "project"):
+        sp = sub.add_parser(kind, help=f"File a {kind} drop")
+        sp.add_argument("--title", required=True)
+        sp.add_argument("--body")
+        if kind == "task":
+            sp.add_argument("--project")
+            sp.add_argument("--scheduled-for", dest="scheduled_for")
+    args = parser.parse_args()
+
+    if args.cmd == "projects":
+        data = call("GET", "/v1/projects")
+        if data.get("hint"):
+            print(f"hint: {data['hint']}", file=sys.stderr)
+        for name in data.get("projects", []):
+            print(name)
+        return
+
+    payload = {"kind": args.cmd, "title": args.title}
+    for field in ("body", "project", "scheduled_for"):
+        value = getattr(args, field, None)
+        if value:
+            payload[field] = value
+    data = call("POST", "/v1/drops", payload)
+    print(f"stored drop {data.get('id')}: {data.get('title')}")
+
+
+if __name__ == "__main__":
+    main()

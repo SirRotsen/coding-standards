@@ -1,0 +1,70 @@
+#!/bin/sh
+#
+# The one file a repository vendors. Every command it runs is fetched from
+# coding-standards at run time, so a change to what `session-start` prints or
+# what `drop` sends ships from that repo alone and never needs a PR here.
+#
+# Copy to .claude/bin/hq, `chmod +x`, add `.claude/.cache/` to .gitignore, and
+# wire the two entry points in .claude/settings.json:
+#
+#   "hooks": { "SessionStart": [ { "hooks": [ { "type": "command",
+#       "command": "$CLAUDE_PROJECT_DIR/.claude/bin/hq session-start",
+#       "timeout": 20 } ] } ] },
+#   "permissions": { "allow": [ "Bash(.claude/bin/hq drop:*)" ] }
+#
+# That allow rule matches the literal text of the command: `.claude/bin/hq drop
+# ...` and nothing else—not `./.claude/bin/hq`, not an absolute path, and not
+# any other subcommand. Invoke it exactly as written or it prompts.
+set -u
+
+REF="${HQ_BOOTSTRAP_REF:-main}"
+BASE="https://raw.githubusercontent.com/SirRotsen/coding-standards/$REF/payload"
+
+ROOT="${CLAUDE_PROJECT_DIR:-}"
+[ -n "$ROOT" ] || ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd) || exit 0
+CACHE="$ROOT/.claude/.cache"
+
+cmd="${1:-}"
+[ -n "$cmd" ] && shift || { echo "usage: .claude/bin/hq <session-start|drop> [args]" >&2; exit 2; }
+
+# Named commands only. The command becomes part of a URL, so anything else
+# would let an argument choose what gets fetched and run.
+case "$cmd" in
+  session-start|drop) ;;
+  *) echo "hq: unknown command: $cmd" >&2; exit 2 ;;
+esac
+
+# A half-written file, an HTML error page, or a proxy's captive-portal login all
+# arrive over a successful-looking fetch. A payload is a script: it starts with
+# a shebang and is not a stub.
+usable() {
+  [ -s "$1" ] && [ "$(head -c 2 "$1" 2>/dev/null)" = '#!' ] && [ "$(wc -c <"$1")" -ge 200 ]
+}
+
+tmp=$(mktemp 2>/dev/null) || tmp=""
+if [ -n "$tmp" ]; then
+  if curl -fsSL --connect-timeout 3 --max-time 10 "$BASE/$cmd" -o "$tmp" 2>/dev/null && usable "$tmp"; then
+    mkdir -p "$CACHE" 2>/dev/null && cp "$tmp" "$CACHE/$cmd" 2>/dev/null && chmod +x "$CACHE/$cmd" 2>/dev/null
+  fi
+  rm -f "$tmp"
+fi
+
+# Offline, or coding-standards unreachable: run the last payload that arrived
+# intact. Slightly stale beats nothing, and nothing is what a bootstrap costs if
+# it insists on a fresh copy.
+if ! usable "$CACHE/$cmd"; then
+  if [ "$cmd" = "session-start" ]; then
+    exit 0  # a session without the standards is degraded, never blocked
+  fi
+  echo "hq: could not fetch $cmd from coding-standards, and no cached copy exists" >&2
+  exit 1
+fi
+
+chmod +x "$CACHE/$cmd" 2>/dev/null
+
+# The payload runs from the cache directory, so it cannot find the repository by
+# looking beside itself.
+HQ_REPO_ROOT="$ROOT"
+export HQ_REPO_ROOT
+
+exec "$CACHE/$cmd" "$@"
