@@ -1,0 +1,71 @@
+name: No agent thread
+
+# The convention is that the Agent-Messages/ thread stays in a branch's history
+# and never reaches main — deleted in the branch's last commit before the pull
+# request merges. Nothing enforced that, and on 2026-09-16 a branch cut from a
+# thread branch carried three of those files into a pull request whose own
+# description said it changed three files and nothing else. A branch watch caught
+# it; no gate did.
+#
+# Copied into each repository as-is from SirRotsen/coding-standards
+# (workflows/no-agent-thread.yml): one file, git and a shell, no dependency on
+# anything else in the repository it lands in. Fix it there, not here.
+#
+# It reports a check named "no-agent-thread". Adding the file makes it run;
+# making it *required* is a branch-protection setting, done per repository.
+
+on:
+  pull_request:
+    branches: [main]
+    # ready_for_review is not one of the default types, and the job below skips
+    # drafts — without it the check would never report on a PR marked ready, and
+    # a branch-protected PR could not merge at all.
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  no-agent-thread:
+    # The thread lives on the branch through the whole review loop and is
+    # deleted before the PR is marked ready, so a draft is exactly when this
+    # check should not run. A skipped job reports success to branch protection,
+    # which is harmless: GitHub refuses to merge a draft.
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The agent thread is deleted before merge
+        run: |
+          set -eu
+
+          # A check that passes by finding nothing to look at is worse than no
+          # check: it reports green. Prove there was a tree to inspect first.
+          tracked=$(git ls-files | wc -l)
+          if [ "$tracked" -eq 0 ]; then
+            echo "This branch holds no tracked files, so nothing was inspected." >&2
+            exit 1
+          fi
+
+          found=$(git ls-files | grep -E '(^|/)Agent-Messages/' || true)
+
+          if [ -n "$found" ]; then
+            echo "The agent thread is still on this branch:" >&2
+            echo "$found" | sed 's/^/  /' >&2
+            echo "" >&2
+            echo "Agent-Messages/ is a conversation between agents, not part of the" >&2
+            echo "site. It stays in this branch's history, where the record belongs," >&2
+            echo "and never reaches main." >&2
+            echo "" >&2
+            echo "Delete the folder in this branch's last commit before merging:" >&2
+            echo "" >&2
+            echo "    git rm -r Agent-Messages && git commit -m 'Delete the agent thread before merge'" >&2
+            echo "" >&2
+            echo "If this branch was cut from a thread branch rather than from main," >&2
+            echo "check the rest of the diff too — it is carrying more than it says." >&2
+            exit 1
+          fi
+
+          echo "OK: no agent thread in $tracked tracked file(s)"

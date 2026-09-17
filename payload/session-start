@@ -1,11 +1,16 @@
 #!/bin/bash
 #
-# SessionStart hook: print the shared coding standards, then this repo's publish
-# state. Every failure exits 0—a session without standards is degraded, not
-# broken, and a hook must never be the thing that stops work.
+# SessionStart payload, fetched and run by .claude/bin/hq: print the shared
+# coding standards, then this repo's publish state. Every failure exits 0—a
+# session without standards is degraded, not broken, and a hook must never be
+# the thing that stops work.
+#
+# A repo needing its own session setup keeps that in its own hook, running after
+# this one. Nothing repo-specific belongs in here; hymnkeep's cloud container
+# prep is the standing example.
 set -uo pipefail
 
-BASE="${CODING_STANDARDS_BASE:-https://raw.githubusercontent.com/SirRotsen/coding-standards/main}"
+BASE="${HQ_STANDARDS_BASE:-https://raw.githubusercontent.com/SirRotsen/coding-standards/main}"
 
 fetch() {
   curl -fsSL --connect-timeout 3 --max-time 10 "$BASE/$1" 2>/dev/null
@@ -22,7 +27,7 @@ emit() {
 emit CODING-STANDARDS.md
 emit REVIEW.md
 
-cd "${CLAUDE_PROJECT_DIR:-$(dirname "$0")/../..}" 2>/dev/null || exit 0
+cd "${HQ_REPO_ROOT:-${CLAUDE_PROJECT_DIR:-.}}" 2>/dev/null || exit 0
 git rev-parse --git-dir >/dev/null 2>&1 || exit 0
 
 # A ref advertisement costs a fraction of a fetch, and it answers the only
