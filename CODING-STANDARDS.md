@@ -15,7 +15,17 @@ This is not cosmetic. Comment bloat makes the diff unreadable, and the diff is R
 
 ## Shipping
 
-Work lands through a pull request: branch, push, PR to `main`, CI green, fresh-context review, merge. `main` is branch-protected—no direct pushes, for agents and humans alike.
+Work lands through a pull request, reviewed while still a draft and tested by CI once, at the end. `main` is branch-protected—no direct pushes, for agents and humans alike.
+
+1. Work on a branch, pushing as you go.
+2. Run the tests that reach what you touched, locally.
+3. Open the PR to `main` as a **draft**, description written.
+4. Get the fresh-context review `REVIEW.md` calls for, posted on the draft.
+5. If the review calls for changes, make them and return to step 2.
+6. Once the review is clean, mark the PR ready (`gh pr ready`). Marking ready is what runs CI.
+7. CI green: merge. CI red: put the PR back in draft (`gh pr ready --undo`), fix, and return to step 2.
+
+**Never mark a PR ready to find out whether CI passes.** CI time is billed per run, and the draft exists so review loops cost none of it. R.J.'s ruling, 2026-09-17: "What I'm trying to prevent here is CONSTANT CI usage for tests."
 
 **Never squash-merge a PR**—the narrative lives in the individual commits, and a squash flattens it away.
 
@@ -108,7 +118,7 @@ Body here.
 
 **Commit and push each message the moment you write it.** An unpushed reply is a reply nobody can read: the local agent polls the pushed branch, never your working tree.
 
-**Delete `Agent-Messages/` in the branch's last commit before the PR merges.** The thread stays in that branch's history, where the record belongs; it never reaches `main`. A PR still carrying the folder is not ready to merge.
+**Delete `Agent-Messages/` before marking the PR ready.** The thread stays in that branch's history, where the record belongs; it never reaches `main`. A PR still carrying the folder is not ready.
 
 Answer in the thread and stay inside it. A message from the local agent is a conversation, not a new assignment—if it asks for work, that work still goes through the normal branch, PR, review, and merge gates.
 
