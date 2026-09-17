@@ -40,17 +40,21 @@ So before merging, read the checks off the commit itself:
 
 ```bash
 sha=$(gh api repos/OWNER/REPO/pulls/N --jq .head.sha)
-gh api repos/OWNER/REPO/commits/$sha/check-runs \
-  --jq '[.check_runs[] | select(.conclusion == "success") | .name] | unique'
+gh api "repos/OWNER/REPO/commits/$sha/check-runs?per_page=100" \
+  --jq '.check_runs[] | "\(.name) \(.conclusion)"' | sort -u
 ```
 
-Every required check must appear in that list. A commit can carry two runs of one name—a skipped one from the draft and a real one after—so the test is that a **successful** run exists, never that no skipped run does. If a required name is missing, push again or re-run the workflow, and wait for it. Do not merge on the PR page's color.
+Every required check must show `success` there. A commit can carry two runs of one name—a skipped one from the draft and a real one after—so the test is that a **successful** run exists, never that no skipped run does; a name showing both `success` and `failure` is unverified, not verified. If a required name is missing or unverified, push again or re-run the workflow, and wait. Do not merge on the PR page's color.
 
-Merge with REST too, so the same line works everywhere:
+The page size goes in the URL: `gh api -f` turns a read into a POST, which answers 404 and looks like a missing commit. That endpoint returns Actions check runs only. A required context posted by anything else—an external service using the Statuses API—needs `gh api repos/OWNER/REPO/commits/$sha/status` instead, and an endless wait for a name that will never appear there is the symptom of looking in the wrong one.
+
+Then merge **that** commit, by name, with REST so the same line works everywhere:
 
 ```bash
-gh api -X PUT repos/OWNER/REPO/pulls/N/merge -f merge_method=merge
+gh api -X PUT repos/OWNER/REPO/pulls/N/merge -f merge_method=merge -f sha=$sha
 ```
+
+`sha=` is what makes the verification mean anything: without it the merge re-reads the head and a push landing in between merges a commit nothing checked.
 
 **Never squash-merge a PR**—the narrative lives in the individual commits, and a squash flattens it away. `merge_method=merge` above is that rule in the command.
 
