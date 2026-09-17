@@ -22,6 +22,8 @@ One vendored file, `.claude/bin/hq`, fetched-at-runtime logic behind it. A repo 
 - `.github/workflows/no-agent-thread.yml`, copied from `workflows/`, with `no-agent-thread` set as a required status check in branch protection.
 - The repo's own CI workflow carrying the draft-skipping pair `types: [opened, synchronize, reopened, ready_for_review]` and a job-level `if: github.event.pull_request.draft == false`. Both, or merges block—see the Shipping section of `CODING-STANDARDS.md`.
 
+What the bootstrap checks about a payload is that it is a script—a shebang, not a stub. There is no checksum, signature or pin, deliberately: the gate is this repo's own review and required check, which is why they exist.
+
 Changing a payload here changes every repo's next run. Changing `bin/hq` is the one thing that still costs a PR per repo, which is why it does nothing but fetch, verify, cache and exec.
 
 A repo with its own session-setup needs keeps that in its own hook alongside this one. `payload/session-start` stays repo-agnostic; hymnkeep's cloud container prep is the standing example.

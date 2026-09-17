@@ -67,7 +67,13 @@ if [ -n "$tmp" ]; then
     # next run. A shared intermediate name would just move the race one step
     # later, and its cleanup would delete the other session's file.
     staged="$CACHED.$$.new"
-    if mkdir -p "$CACHE" 2>/dev/null && cp "$tmp" "$staged" 2>/dev/null; then
+    if mkdir -p "$CACHE" 2>/dev/null; then
+      # The cache ignores itself. A repo whose .gitignore missed this line would
+      # commit fetched, executable code that no review ever saw, and the line is
+      # one step in a conversion done 21 times by hand.
+      [ -f "$CACHE/.gitignore" ] || printf '*\n' >"$CACHE/.gitignore" 2>/dev/null
+    fi
+    if [ -d "$CACHE" ] && cp "$tmp" "$staged" 2>/dev/null; then
       chmod 0755 "$staged" 2>/dev/null
       if mv -f "$staged" "$CACHED" 2>/dev/null; then
         run="$CACHED"

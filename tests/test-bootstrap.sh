@@ -117,11 +117,16 @@ else
   run drop "$REF" projects >/dev/null 2>&1 || true
   if head -1 "$CACHE/$KEY.drop" | grep -q '^#!'; then ok "  a good fetch replaces junk in the cache"; else bad "junk survived a good fetch"; fi
 
+  # The cache must ignore itself: a repo whose .gitignore missed the line would
+  # otherwise commit fetched executable code.
+  if [ "$(cat "$CACHE/.gitignore" 2>/dev/null)" = "*" ]; then ok "  the cache ignores itself"; else bad "no .gitignore written into the cache"; fi
+
   # exec never returns, so anything the bootstrap left in TMPDIR stays there.
   rm -rf "$CACHE"
   rm -f "$TMPDIR"/*
   run session-start "$REF" >/dev/null 2>&1
   check "a cached run leaves no temporary file behind" "$(ls -1 "$TMPDIR" | wc -l | tr -d ' ')" 0
+  if [ -z "$(ls "$CACHE"/*.new 2>/dev/null)" ]; then ok "  and no staging file in the cache"; else bad "a staging file survived"; fi
 
   # A read-only .claude costs the cache, never the run.
   rm -rf "$CACHE"

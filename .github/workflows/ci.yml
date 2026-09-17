@@ -61,12 +61,20 @@ jobs:
             echo "parsed $f"
           done
 
+      - name: This repo's copy of the shared check matches the shared one
+        run: |
+          set -eu
+          # Two copies of one file is the duplication this repo exists to end.
+          # Small scale, same rule: they cannot drift.
+          diff workflows/no-agent-thread.yml .github/workflows/no-agent-thread.yml
+          echo "the copies match"
+
       - name: Workflows are valid YAML
         run: |
           python3 - <<'PY'
           import glob, sys, yaml
 
-          files = glob.glob('workflows/*.yml') + glob.glob('.github/workflows/*.yml')
+          files = (glob.glob('workflows/*.y*ml') + glob.glob('.github/workflows/*.y*ml'))
           if not files:
               print('::error::no workflow files found')
               sys.exit(1)
