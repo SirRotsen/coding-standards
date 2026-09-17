@@ -23,13 +23,36 @@ Work lands through a pull request, reviewed while still a draft and tested by CI
 4. Get the fresh-context review `REVIEW.md` calls for, posted on the draft.
 5. If the review calls for changes, make them, re-run the local tests, and go back to step 4—the PR stays open, in draft, throughout.
 6. Once the review is clean, mark the PR ready (`gh pr ready`). In a repo whose CI is set up as below, that is the event that runs it.
-7. CI green: merge. CI red: `gh pr ready --undo`, fix, and go back to step 2. Whether that fix needs a second review is `REVIEW.md`'s call, not this list's.
+7. Confirm CI actually ran on the PR's current commit—see below; a green PR is not proof of it.
+8. CI green: merge. CI red: `gh pr ready --undo`, fix, and go back to step 2. Whether that fix needs a second review is `REVIEW.md`'s call, not this list's.
 
 **Ready means the local tests are green and the review is clean**—never mark a PR ready to find out whether CI passes. CI time is billed per run, and the draft exists so the review loop costs none of it. R.J.'s ruling, 2026-09-17: "What I'm trying to prevent here is CONSTANT CI usage for tests."
 
 **In a repo whose CI does not yet skip drafts, every push to an open draft still runs it.** Check the workflow before step 3: if its `pull_request` trigger has no `types:` list, hold the PR until the review is clean, then open it ready and post the review verbatim as the PR's first comment—the audit trail is the point, and it survives the PR existing for a shorter time. Say in the description that the repo is unconverted. Converting that repo's CI is worth more than any one PR's runs.
 
-**Never squash-merge a PR**—the narrative lives in the individual commits, and a squash flattens it away.
+### Prove the checks ran on the commit you are merging
+
+A job skipped by the draft rule reports **skipped**, and GitHub counts a skipped required check as satisfied. Verified 2026-09-17 against a PR whose required check reported skipped: `mergeable: MERGEABLE`, `mergeStateStatus: CLEAN`. That is the whole point of the draft design—a draft cannot be merged—but it means a green PR page is not evidence that anything ran.
+
+The hole it opens: GitHub takes a moment to attach a new push to a PR, so marking a PR ready in the same breath as a push fires the run against the **previous** commit (seen twice on 2026-09-17). The newest commit keeps its skipped marks, they count as satisfied, and the merge is allowed on code no test ever saw.
+
+So before merging, read the checks off the commit itself:
+
+```bash
+sha=$(gh api repos/OWNER/REPO/pulls/N --jq .head.sha)
+gh api repos/OWNER/REPO/commits/$sha/check-runs \
+  --jq '[.check_runs[] | select(.conclusion == "success") | .name] | unique'
+```
+
+Every required check must appear in that list. A commit can carry two runs of one name—a skipped one from the draft and a real one after—so the test is that a **successful** run exists, never that no skipped run does. If a required name is missing, push again or re-run the workflow, and wait for it. Do not merge on the PR page's color.
+
+Merge with REST too, so the same line works everywhere:
+
+```bash
+gh api -X PUT repos/OWNER/REPO/pulls/N/merge -f merge_method=merge
+```
+
+**Never squash-merge a PR**—the narrative lives in the individual commits, and a squash flattens it away. `merge_method=merge` above is that rule in the command.
 
 **Always push after committing.** R.J. never wants a local-only commit.
 
@@ -54,6 +77,8 @@ jobs:
 With only the `if:`, marking a PR ready fires an event the workflow ignores, the required check never reports, and a branch-protected PR cannot merge at all. The `if:` belongs on the job, not on the workflow: the workflow still triggers and the job skips, and a skipped job reports success to branch protection—harmless, because GitHub refuses to merge a draft anyway. It goes on every job named as a required check, since a required check is required by name.
 
 ### Cloud-session preflight
+
+**Reach GitHub through `gh`, and prefer its REST form.** A cloud session's GitHub credential lives in a proxy, not in the machine: `$GITHUB_TOKEN` there reads as the literal string `proxy-injected`, so a hand-rolled `curl` authenticates as nothing. The same proxy serves only a pinned set of GraphQL operations, and `gh pr checks` and `gh pr merge` are GraphQL-backed—they can answer `This GraphQL query is not enabled for this session`, which is the boundary rather than a permissions fault you can fix. The REST forms (`gh api repos/...`) go through unrestricted; that is why the merge and check-verification commands above are written as `gh api`. Expect `git push` to work only on the session's own working branch.
 
 Before starting work in a cloud session, run `git remote -v` and `git push --dry-run origin main`. If either fails, the session was spawned detached from the GitHub repo and cannot push: report that and stop, rather than working toward a push that will be refused. If there is simply no remote configured, add it and dry-run again—the session proxy supplies authentication when the repo is attached.
 
