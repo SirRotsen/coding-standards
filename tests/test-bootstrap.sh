@@ -63,13 +63,13 @@ if grep -q "could not fetch" "$WORK/err"; then ok "  and says why"; else bad "dr
 echo "Junk never runs:"
 
 mkdir -p "$CACHE"
-printf '<html><body>404: Not Found</body></html>' >"$CACHE/drop"
-chmod +x "$CACHE/drop"
+printf '<html><body>404: Not Found</body></html>' >"$CACHE/no-such-ref-$$.drop"
+chmod +x "$CACHE/no-such-ref-$$.drop"
 code=$(run drop "no-such-ref-$$" projects)
 check "an HTML error page in the cache is refused" "$code" 1
 
-printf '#!/bin/sh\necho ran\n' >"$CACHE/drop"
-chmod +x "$CACHE/drop"
+printf '#!/bin/sh\necho ran\n' >"$CACHE/no-such-ref-$$.drop"
+chmod +x "$CACHE/no-such-ref-$$.drop"
 code=$(run drop "no-such-ref-$$" projects)
 check "a too-short script in the cache is refused" "$code" 1
 
@@ -83,23 +83,31 @@ else
   check "session-start runs and exits 0" "$code" 0
   if grep -q "CODING-STANDARDS.md" "$WORK/out"; then ok "  prints the standards"; else bad "no standards in the output"; fi
   if grep -q "REVIEW.md" "$WORK/out"; then ok "  prints the review rubric"; else bad "no rubric in the output"; fi
-  if [ -s "$CACHE/session-start" ]; then ok "  caches the payload"; else bad "nothing cached"; fi
-  if [ ! -e "$CACHE/session-start.new" ]; then ok "  leaves no partial file behind"; else bad "session-start.new survived"; fi
+  if [ -s "$CACHE/$REF.session-start" ]; then ok "  caches the payload under its ref"; else bad "nothing cached for ref $REF"; fi
+  if [ ! -e "$CACHE/$REF.session-start.new" ]; then ok "  leaves no partial file behind"; else bad "a .new file survived"; fi
 
   # The documents must come from the same ref as the payload, or testing a
   # branch silently reads main.
-  if grep -q "$REF" <(printf '%s' "$REF") && [ "$REF" != main ]; then
+  if [ "$REF" != main ]; then
     if HQ_STANDARDS_BASE="https://raw.githubusercontent.com/SirRotsen/coding-standards/$REF" \
-       HQ_REPO_ROOT="$REPO" "$CACHE/session-start" >/dev/null 2>&1; then
+       HQ_REPO_ROOT="$REPO" "$CACHE/$REF.session-start" >/dev/null 2>&1; then
       ok "  payload honors the ref it was fetched from"
     else
       bad "payload failed when pointed at ref '$REF'"
     fi
   fi
 
-  printf '<html>not a script</html>' >"$CACHE/drop"
+  printf '<html>not a script</html>' >"$CACHE/$REF.drop"
   run drop "$REF" projects >/dev/null 2>&1 || true
-  if head -1 "$CACHE/drop" | grep -q '^#!'; then ok "  a good fetch replaces junk in the cache"; else bad "junk survived a good fetch"; fi
+  if head -1 "$CACHE/$REF.drop" | grep -q '^#!'; then ok "  a good fetch replaces junk in the cache"; else bad "junk survived a good fetch"; fi
+
+  # A read-only .claude costs the cache, never the run.
+  rm -rf "$CACHE"
+  chmod 555 "$REPO/.claude"
+  code=$(run session-start "$REF")
+  chmod 755 "$REPO/.claude"
+  check "an unwritable cache still runs the fetched payload" "$code" 0
+  if grep -q "CODING-STANDARDS.md" "$WORK/out"; then ok "  and still prints the standards"; else bad "output lost when the cache was unwritable"; fi
 fi
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
