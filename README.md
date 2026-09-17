@@ -17,8 +17,8 @@ The single source of truth for R.J. Nestor's coding standards across every repos
 One vendored file, `.claude/bin/hq`, fetched-at-runtime logic behind it. A repo needs:
 
 - `.claude/bin/hq`, copied from `bin/hq`, executable.
-- `.claude/.cache/` in `.gitignore`—where the bootstrap keeps the last payload that arrived intact, so an unreachable network degrades to slightly stale instead of nothing.
-- `.claude/settings.json` wiring the two entry points: the `SessionStart` hook runs `$CLAUDE_PROJECT_DIR/.claude/bin/hq session-start`, and `permissions.allow` carries `Bash(.claude/bin/hq drop:*)`. That rule matches the literal command text, so `hq drop` is allowed and every other subcommand still prompts.
+- `.claude/.cache/` in `.gitignore`—where the bootstrap keeps the last payload that arrived intact, so an unreachable network degrades to slightly stale instead of nothing. This one is load-bearing, not hygiene: anything sitting there with a shebang is what runs when the fetch fails, so a committed cache would be executable code review never saw.
+- `.claude/settings.json` wiring the two entry points: the `SessionStart` hook runs `$CLAUDE_PROJECT_DIR/.claude/bin/hq session-start`, and `permissions.allow` carries `Bash(.claude/bin/hq drop:*)`. That rule matches the literal command text, so `hq drop` is allowed and every other subcommand still prompts. Know what it authorizes: code fetched from this repo, run without a prompt, in the process that holds `HQ_DROP_TOKEN`. That is why the ref is validated, the payload is verified before it is cached, and merging here is gated.
 - `.github/workflows/no-agent-thread.yml`, copied from `workflows/`, with `no-agent-thread` set as a required status check in branch protection.
 - The repo's own CI workflow carrying the draft-skipping pair `types: [opened, synchronize, reopened, ready_for_review]` and a job-level `if: github.event.pull_request.draft == false`. Both, or merges block—see the Shipping section of `CODING-STANDARDS.md`.
 

@@ -25,6 +25,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: The bootstrap refuses what it must
+        env:
+          # A skipped network section would leave only the refusal tests run and
+          # still report green, over the code 21 repos execute.
+          REQUIRE_FETCH: "1"
         run: bash tests/test-bootstrap.sh "${{ github.event.pull_request.head.sha || github.sha }}"
 
       - name: Every payload is a runnable script
@@ -45,9 +49,17 @@ jobs:
         run: |
           set -eu
           sh -n bin/hq
-          bash -n payload/session-start
           bash -n tests/test-bootstrap.sh
-          python3 -c "import ast,sys; ast.parse(open('payload/drop').read())"
+          # Every payload, by its own shebang, so a payload added later is not a
+          # payload nothing parses.
+          for f in payload/*; do
+            case $(head -1 "$f") in
+              *python*) python3 -c "import ast,sys; ast.parse(open('$f').read())" ;;
+              *bash*)   bash -n "$f" ;;
+              *)        sh -n "$f" ;;
+            esac
+            echo "parsed $f"
+          done
 
       - name: Workflows are valid YAML
         run: |

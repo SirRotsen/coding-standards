@@ -13,12 +13,22 @@ HERE=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
+# Every temporary file the bootstrap makes lands here, so the leak check below
+# counts only its own litter.
+export TMPDIR="$WORK/tmp"
+mkdir -p "$TMPDIR"
+
 REPO="$WORK/repo"
 mkdir -p "$REPO/.claude/bin"
 cp "$HERE/bin/hq" "$REPO/.claude/bin/hq"
 chmod +x "$REPO/.claude/bin/hq"
 HQ="$REPO/.claude/bin/hq"
 CACHE="$REPO/.claude/.cache"
+
+# The cache key the bootstrap builds: the ref with slashes flattened, plus a
+# checksum so two refs cannot collide. Derived here rather than hardcoded, so
+# the tests break when the scheme changes rather than when a ref name does.
+KEY="$(printf '%s' "$REF" | tr '/' '_').$(printf '%s' "$REF" | cksum | cut -d' ' -f1)"
 
 pass=0
 fail=0
@@ -76,30 +86,42 @@ check "a too-short script in the cache is refused" "$code" 1
 echo "Fetching (needs network):"
 
 if ! curl -fsSL --max-time 10 -o /dev/null "https://raw.githubusercontent.com/SirRotsen/coding-standards/$REF/payload/session-start"; then
-  echo "  SKIP: cannot reach the payload for ref '$REF'"
+  # A gate that passes having checked nothing is the failure this whole file
+  # exists to prevent, so CI sets REQUIRE_FETCH and a skip becomes a failure.
+  if [ -n "${REQUIRE_FETCH:-}" ]; then
+    bad "the payload for ref '$REF' is unreachable and REQUIRE_FETCH is set"
+  else
+    echo "  SKIP: cannot reach the payload for ref '$REF'"
+  fi
 else
   rm -rf "$CACHE"
   code=$(run session-start "$REF")
   check "session-start runs and exits 0" "$code" 0
   if grep -q "CODING-STANDARDS.md" "$WORK/out"; then ok "  prints the standards"; else bad "no standards in the output"; fi
   if grep -q "REVIEW.md" "$WORK/out"; then ok "  prints the review rubric"; else bad "no rubric in the output"; fi
-  if [ -s "$CACHE/$REF.session-start" ]; then ok "  caches the payload under its ref"; else bad "nothing cached for ref $REF"; fi
-  if [ ! -e "$CACHE/$REF.session-start.new" ]; then ok "  leaves no partial file behind"; else bad "a .new file survived"; fi
+  if [ -s "$CACHE/$KEY.session-start" ]; then ok "  caches the payload under its ref"; else bad "nothing cached for ref $REF"; fi
+  if [ ! -e "$CACHE/$KEY.session-start.new" ]; then ok "  leaves no partial file behind"; else bad "a .new file survived"; fi
 
   # The documents must come from the same ref as the payload, or testing a
   # branch silently reads main.
   if [ "$REF" != main ]; then
     if HQ_STANDARDS_BASE="https://raw.githubusercontent.com/SirRotsen/coding-standards/$REF" \
-       HQ_REPO_ROOT="$REPO" "$CACHE/$REF.session-start" >/dev/null 2>&1; then
+       HQ_REPO_ROOT="$REPO" "$CACHE/$KEY.session-start" >/dev/null 2>&1; then
       ok "  payload honors the ref it was fetched from"
     else
       bad "payload failed when pointed at ref '$REF'"
     fi
   fi
 
-  printf '<html>not a script</html>' >"$CACHE/$REF.drop"
+  printf '<html>not a script</html>' >"$CACHE/$KEY.drop"
   run drop "$REF" projects >/dev/null 2>&1 || true
-  if head -1 "$CACHE/$REF.drop" | grep -q '^#!'; then ok "  a good fetch replaces junk in the cache"; else bad "junk survived a good fetch"; fi
+  if head -1 "$CACHE/$KEY.drop" | grep -q '^#!'; then ok "  a good fetch replaces junk in the cache"; else bad "junk survived a good fetch"; fi
+
+  # exec never returns, so anything the bootstrap left in TMPDIR stays there.
+  rm -rf "$CACHE"
+  rm -f "$TMPDIR"/*
+  run session-start "$REF" >/dev/null 2>&1
+  check "a cached run leaves no temporary file behind" "$(ls -1 "$TMPDIR" | wc -l | tr -d ' ')" 0
 
   # A read-only .claude costs the cache, never the run.
   rm -rf "$CACHE"

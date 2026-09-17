@@ -16,7 +16,7 @@ REF="${HQ_BOOTSTRAP_REF:-main}"
 # allowlisted to run unprompted. Ref characters only, and no dot segments.
 # --path-as-is below is the second layer: unsquashed, a traversal 404s.
 case "$REF" in
-  ''|*..*|/*|*/|*[!A-Za-z0-9._/-]*)
+  *..*|/*|*/|*[!A-Za-z0-9._/-]*)
     echo "hq: refusing the ref '$REF'—letters, digits, dot, dash, underscore and slash only" >&2
     exit 2
     ;;
@@ -25,8 +25,9 @@ esac
 BASE="https://raw.githubusercontent.com/SirRotsen/coding-standards/$REF/payload"
 
 # Keyed by ref as well as command, so testing a branch cannot leave that
-# branch's code sitting in the slot the next ordinary run reads.
-SAFE_REF=$(printf '%s' "$REF" | tr '/' '_')
+# branch's code sitting in the slot the next ordinary run reads. The checksum
+# keeps `fix/a` and `fix_a` apart, which flattening slashes alone would not.
+SAFE_REF="$(printf '%s' "$REF" | tr '/' '_').$(printf '%s' "$REF" | cksum | cut -d' ' -f1)"
 
 ROOT="${CLAUDE_PROJECT_DIR:-}"
 [ -n "$ROOT" ] || ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd) || {
@@ -60,15 +61,18 @@ tmp=$(mktemp 2>/dev/null) || tmp=""
 if [ -n "$tmp" ]; then
   if curl -fsSL --path-as-is --connect-timeout 3 --max-time 10 "$BASE/$cmd" -o "$tmp" 2>/dev/null && usable "$tmp"; then
     run="$tmp"
-    # Written beside the cache and moved into place: a copy interrupted by a
-    # full disk, a signal, or a second session starting on this checkout would
-    # still begin with a shebang and pass usable() on the next run.
-    if mkdir -p "$CACHE" 2>/dev/null && cp "$tmp" "$CACHED.new" 2>/dev/null; then
-      chmod 0755 "$CACHED.new" 2>/dev/null
-      if mv -f "$CACHED.new" "$CACHED" 2>/dev/null; then
+    # Written under a name no other process shares, then moved into place: a
+    # copy interrupted by a full disk, a signal, or a second session starting on
+    # this checkout would still begin with a shebang and pass usable() on the
+    # next run. A shared intermediate name would just move the race one step
+    # later, and its cleanup would delete the other session's file.
+    staged="$CACHED.$$.new"
+    if mkdir -p "$CACHE" 2>/dev/null && cp "$tmp" "$staged" 2>/dev/null; then
+      chmod 0755 "$staged" 2>/dev/null
+      if mv -f "$staged" "$CACHED" 2>/dev/null; then
         run="$CACHED"
       else
-        rm -f "$CACHED.new"
+        rm -f "$staged"
       fi
     fi
     # An unwritable .claude—read-only checkout, root-owned directory in a
@@ -94,6 +98,10 @@ if [ -z "$run" ]; then
 fi
 
 chmod 0755 "$run" 2>/dev/null
+
+# exec never returns, so the temporary copy has to go now. It is kept only when
+# it is the thing about to run, which happens when the cache is unwritable.
+[ -n "$tmp" ] && [ "$run" != "$tmp" ] && rm -f "$tmp"
 
 # The payload runs from the cache directory, so it cannot find the repository by
 # looking beside itself.
