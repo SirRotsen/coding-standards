@@ -11,9 +11,21 @@ Fresh context is the requirement; the mechanism is not. Either of these qualifie
 
 What disqualifies a review is the authoring context reaching the reviewer, not which of the two supplied it.
 
+## What skips review
+
+A PR skips review only when every changed line is one of these:
+
+- **Code comments.**
+- **Prose in documentation files** that humans read and nothing executes, parses, or loads.
+- **Wording inside an existing user-facing string**—a label, a message, page copy—with nothing around the string changed.
+
+Never exempt, whatever the diff looks like: any file an agent loads as instructions (`CLAUDE.md`, `CODING-STANDARDS.md`, `REVIEW.md`, skills, hook scripts), CI workflows, configuration, and anything touching sign-in, money, stored data, or deploys. When unsure, it is not exempt—the author judging its own change trivial is the judgment this rubric exists to check.
+
+An exempt PR opens the way the repo's CI calls for—draft, or ready where drafts still run CI—and still passes CI. Its Provenance section names the exemption: "Review skipped: comments only."
+
 ## Choosing the reviewer
 
-The author picks the model: **Sonnet for straightforward changes, Opus for substantial or judgment-heavy ones.** The pick is made before invoking, and it is the author's own assessment of how hard the change is to get right—not how long it took to write. A change that is short but touches auth, money, data loss, or anything ruled is judgment-heavy.
+The author picks the model: **Sonnet by default; Opus only for substantial or judgment-heavy changes.** The pick is made before invoking, and it is the author's own assessment of how hard the change is to get right—not how long it took to write. A change that is short but touches auth, money, data loss, or anything ruled is judgment-heavy.
 
 That assessment never reaches the reviewer. It selects who reviews; it is not part of the prompt.
 
@@ -27,7 +39,7 @@ When the authoring session spawns the reviewer, that prompt is the whole prompt,
 
 ## The verdict lands on the PR
 
-The review is posted as a comment on the PR, with `gh`, **before the merge**. The audit trail lives on the PR, not in a session nobody will reopen. Whoever merges records the reviewing model in the PR's Provenance section.
+The review is posted as a comment on the draft PR, with `gh`, **before the PR is marked ready**. Where the repo's CI has not yet been taught to skip drafts and the PR is therefore opened ready, the review posts as the PR's first comment instead. The audit trail lives on the PR, not in a session nobody will reopen. Whoever merges records the reviewing model in the PR's Provenance section.
 
 The reviewer posts its own comment where it can reach GitHub. Where it can't, the author posts the review verbatim, including the findings it disagrees with; disagreement goes in a reply underneath, never into the text. An author's summary of a review of their own work is not the review, and the record has to survive the author disagreeing with it.
 
@@ -35,8 +47,10 @@ The reviewer posts its own comment where it can reach GitHub. Where it can't, th
 
 A review that produced changes does not automatically need a second review. The line:
 
-- **Typo, comment, rename, formatting**—merge once CI re-greens. No second review.
-- **Anything touching logic or control flow, and anything that touches what the review flagged**—back to a **new** fresh reviewer, at the model the fix's own complexity calls for.
+- **Typo, comment, rename, formatting**—no second review; mark the PR ready.
+- **Anything touching logic or control flow, and anything that touches what the review flagged**—back to a **new** fresh reviewer, at the model the fix's own complexity calls for, with the PR still in draft.
+
+A fix CI forced after the PR was marked ready follows the same line: back to draft first, then re-review if the fix calls for it.
 
 The reviewer who wrote the finding is not the one who checks the fix: it has now seen the author's reasoning about that code and is no longer fresh on it.
 

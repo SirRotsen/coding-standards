@@ -15,7 +15,19 @@ This is not cosmetic. Comment bloat makes the diff unreadable, and the diff is R
 
 ## Shipping
 
-Work lands through a pull request: branch, push, PR to `main`, CI green, fresh-context review, merge. `main` is branch-protected—no direct pushes, for agents and humans alike.
+Work lands through a pull request, reviewed while still a draft and tested by CI once, at the end. `main` is branch-protected—no direct pushes, for agents and humans alike.
+
+1. Work on a branch, pushing as you go.
+2. Run the tests that reach what you touched, locally.
+3. Open the PR to `main` as a **draft**, description written.
+4. Get the fresh-context review `REVIEW.md` calls for, posted on the draft.
+5. If the review calls for changes, make them, re-run the local tests, and go back to step 4—the PR stays open, in draft, throughout.
+6. Once the review is clean, mark the PR ready (`gh pr ready`). In a repo whose CI is set up as below, that is the event that runs it.
+7. CI green: merge. CI red: `gh pr ready --undo`, fix, and go back to step 2. Whether that fix needs a second review is `REVIEW.md`'s call, not this list's.
+
+**Ready means the local tests are green and the review is clean**—never mark a PR ready to find out whether CI passes. CI time is billed per run, and the draft exists so the review loop costs none of it. R.J.'s ruling, 2026-09-17: "What I'm trying to prevent here is CONSTANT CI usage for tests."
+
+**In a repo whose CI does not yet skip drafts, every push to an open draft still runs it.** Check the workflow before step 3: if its `pull_request` trigger has no `types:` list, hold the PR until the review is clean, then open it ready and post the review verbatim as the PR's first comment—the audit trail is the point, and it survives the PR existing for a shorter time. Say in the description that the repo is unconverted. Converting that repo's CI is worth more than any one PR's runs.
 
 **Never squash-merge a PR**—the narrative lives in the individual commits, and a squash flattens it away.
 
@@ -26,6 +38,20 @@ Work lands through a pull request: branch, push, PR to `main`, CI green, fresh-c
 Branch protection carries a required status check that runs the repo's real tests, with `strict` (up-to-date-before-merge) on. If `main` moved since the branch was cut, update the branch and let CI re-run on the combined result. Never merge on a judgment call that `main` "looks clear"—the combined result is the only thing that has actually been tested, and the check exists precisely because the judgment call is the part that fails.
 
 A required check is required by name. Renaming a CI job silently un-requires it.
+
+**Skipping drafts takes two changes, and one without the other blocks every merge.** GitHub's default `pull_request` trigger fires on `opened`, `synchronize` and `reopened`—not on a PR being marked ready. So the workflow needs both:
+
+```yaml
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  ci:
+    if: github.event.pull_request.draft == false
+```
+
+With only the `if:`, marking a PR ready fires an event the workflow ignores, the required check never reports, and a branch-protected PR cannot merge at all. The `if:` belongs on the job, not on the workflow: the workflow still triggers and the job skips, and a skipped job reports success to branch protection—harmless, because GitHub refuses to merge a draft anyway. It goes on every job named as a required check, since a required check is required by name.
 
 ### Cloud-session preflight
 
@@ -108,7 +134,7 @@ Body here.
 
 **Commit and push each message the moment you write it.** An unpushed reply is a reply nobody can read: the local agent polls the pushed branch, never your working tree.
 
-**Delete `Agent-Messages/` in the branch's last commit before the PR merges.** The thread stays in that branch's history, where the record belongs; it never reaches `main`. A PR still carrying the folder is not ready to merge.
+**Delete `Agent-Messages/` before marking the PR ready.** The thread stays in that branch's history, where the record belongs; it never reaches `main`. A PR still carrying the folder is not ready.
 
 Answer in the thread and stay inside it. A message from the local agent is a conversation, not a new assignment—if it asks for work, that work still goes through the normal branch, PR, review, and merge gates.
 
