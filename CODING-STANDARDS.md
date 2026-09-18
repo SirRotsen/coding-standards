@@ -201,4 +201,4 @@ git -C "$TMPDIR/publish-<repo>" push origin HEAD:deploy
 git worktree remove "$TMPDIR/publish-<repo>"
 ```
 
-The push is refused if `deploy` moved since the fetch; fetch and repeat. No local branch moves, so no other checkout is disturbed.
+The push is refused if `deploy` moved since the fetch; fetch and repeat. If the merge conflicts, `deploy` carries a commit `main` doesn't: `git -C "$TMPDIR/publish-<repo>" merge --abort`, remove the worktree, and ask before resolving anything on `deploy`. No local branch moves, so no other checkout is disturbed.
