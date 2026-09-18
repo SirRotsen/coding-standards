@@ -126,8 +126,6 @@ A task titled "test X" almost always means _try X and see if it works_, not _bui
 
 If the environment carries an `HQ_DROP_TOKEN` variable, this session can file a task into R.J.'s task system. The repo's own command is the way—it owns the token and the request, it is allowlisted to run without prompting, and a raw `curl` of the same call gets denied in auto mode as data exfiltration (an env secret sent to an external host), so don't write one.
 
-**Two forms exist while repos convert one at a time.** Use whichever this repo has: `.claude/bin/hq drop` where `.claude/bin/hq` exists, `.claude/bin/hq-drop` where it doesn't. The arguments are identical.
-
 ```bash
 .claude/bin/hq drop projects
 .claude/bin/hq drop task --title "<start with a verb>" --body "<optional detail>" --project "<optional>" --scheduled-for YYYY-MM-DD
