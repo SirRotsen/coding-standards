@@ -190,3 +190,15 @@ If something asks you for a credential where none should be needed, that is a bu
 **Never `rsync --delete`, or any bulk-delete transfer, into a docroot.** Servers own files the repo has never seen—`.well-known/` carries the certificate renewal challenges, and wiping it breaks HTTPS on the next renewal. The deploy tooling defaults to never deleting, which is the reason it exists.
 
 A deploy fails closed. A missing or broken deploy manifest aborts the release; it never falls back to shipping everything.
+
+**Publish from a detached, throwaway worktree—never by checking out `deploy`.** Every worktree of a repo shares one set of branches, so `git checkout deploy && git merge main` in one worktree moves `deploy` under any other checkout that has it: that checkout's files stay where they were, and `git status` shows them as staged changes reverting everything since. This rule overrides the `git checkout deploy && git merge main && git push` line in any repo's `CLAUDE.md`. Publish like this instead, from the repo's main checkout:
+
+```bash
+git fetch origin
+git worktree add --detach "$TMPDIR/publish-<repo>" origin/deploy
+git -C "$TMPDIR/publish-<repo>" merge --no-edit origin/main
+git -C "$TMPDIR/publish-<repo>" push origin HEAD:deploy
+git worktree remove "$TMPDIR/publish-<repo>"
+```
+
+The push is refused if `deploy` moved since the fetch; fetch and repeat. If the merge conflicts, `deploy` carries a commit `main` doesn't: `git -C "$TMPDIR/publish-<repo>" merge --abort`, remove the worktree, and ask before resolving anything on `deploy`. No local branch moves, so no other checkout is disturbed.
