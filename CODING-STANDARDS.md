@@ -10,8 +10,19 @@ Comments explain **why**, never **what**. The code already says what it does.
 - No docblock on a function whose name already says what it does.
 - Prefer a better name over a comment. A comment explaining a bad name is two problems.
 - A comment earns its place only when a competent reader would otherwise ask "why is this here?"—a workaround for someone else's bug, a rule that came from outside the code, an order of operations that looks wrong and isn't.
+- No history, no rulings, no spec in a comment: nothing about which round added it, what a reviewer found, or what R.J. decided. Those live in git and the spec. A comment that points at a spec section is a copy waiting to go stale.
 
 This is not cosmetic. Comment bloat makes the diff unreadable, and the diff is R.J.'s only window into work he didn't write.
+
+## Spec, tests, code
+
+R.J.'s ruling, 2026-09-22: "If we have a spec, and our changes are made against that spec, and our tests are designed as the way to ensure our code is meeting our specs, none of the rest of that stuff matters."
+
+**Each feature has one spec, and it is short.** It says what the feature does, quotes R.J.'s rulings on it, and lists what was assumed but not ruled. Nothing else: no round plans, no build narrative, no rules restated from elsewhere. It changes when the behavior changes or R.J. rules, not with every commit.
+
+**Tests prove the code meets the spec.** The build is checked against the spec, never the other way round.
+
+**Everything else has one job, or doesn't exist.** A worklist, where a repo keeps one, is a to-do list: one line per item, pointing at its spec. It holds no rules, no rulings and no done-log. Standing rules live once, in the repo's `CLAUDE.md`. History lives in git. A fact written in two places is a finding.
 
 ## Shipping
 
@@ -105,6 +116,8 @@ Date things by the day the work happened in **America/New_York**. Containers run
 ## Testing discipline
 
 Run filtered tests while you work—the tests that reach what you touched. CI holds the full-suite line.
+
+**Every test traces to the spec or to an invariant.** A test that pins something the spec doesn't say—a sort order, exact wording, an internal shape—doesn't get written. One test per guarantee, not one per guard.
 
 **Every check must fail when it finds nothing to check.** A gate that passes by finding nothing is worse than no gate: it reports green. This rule is here because a `php -l` gate ran for months over a repo containing zero PHP files.
 

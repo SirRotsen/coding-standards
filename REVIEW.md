@@ -74,6 +74,10 @@ The reviewer who wrote the finding is not the one who checks the fix: it has now
 
 **Comment discipline**, per the comment law. Bloated comments are a rubric violation, not a style preference: they pad the diff and make it unreadable, and the diff is R.J.'s only window into work he didn't write.
 
+**Does every new test trace to the spec or an invariant?** A test pinning something the spec doesn't say is a finding.
+
+**Does it write anything twice, or narrate?** A ruling copied from the spec into a worklist, a comment or a second doc, and any spec or doc edit that records how the build went rather than what the feature does, is a finding.
+
 **Does the PR assert anything a reader of this repository cannot check?** Claims about what a server does, what a deploy ships, what a service returns, what another repo contains—none of that is verifiable from here, and agreeing with it is not review. A repo's `CLAUDE.md` is not evidence on any of it: it is repo memory, and it has been wrong.
 
 **Would anything here surprise the person who reads only the PR description?** If yes, say what and why. This is the catch-all, and in practice it's the check that earns its keep.
