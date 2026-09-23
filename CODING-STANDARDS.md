@@ -21,14 +21,14 @@ Work lands through a pull request, reviewed while still a draft and tested by CI
 2. Run the tests that reach what you touched, locally.
 3. Open the PR to `main` as a **draft**, description written.
 4. Get the fresh-context review `REVIEW.md` calls for, posted on the draft.
-5. If the review calls for changes, make them, re-run the local tests, and go back to step 4—the PR stays open, in draft, throughout.
-6. Once the review is clean, mark the PR ready (`gh pr ready`). In a repo whose CI is set up as below, that is the event that runs it.
+5. If the review calls for changes, make them, re-run the local tests, and get the fix check `REVIEW.md` calls for—two passes at most, and the PR stays open, in draft, throughout.
+6. Once the review passes are done, mark the PR ready (`gh pr ready`). In a repo whose CI is set up as below, that is the event that runs it.
 7. Confirm CI actually ran on the PR's current commit—see below; a green PR is not proof of it.
 8. CI green: merge. CI red: `gh pr ready --undo`, fix, and go back to step 2. Whether that fix needs a second review is `REVIEW.md`'s call, not this list's.
 
-**Ready means the local tests are green and the review is clean**—never mark a PR ready to find out whether CI passes. CI time is billed per run, and the draft exists so the review loop costs none of it. R.J.'s ruling, 2026-09-17: "What I'm trying to prevent here is CONSTANT CI usage for tests."
+**Ready means the local tests are green and the review passes are done**—never mark a PR ready to find out whether CI passes. CI time is billed per run, and the draft exists so the review loop costs none of it. R.J.'s ruling, 2026-09-17: "What I'm trying to prevent here is CONSTANT CI usage for tests."
 
-**In a repo whose CI does not yet skip drafts, every push to an open draft still runs it.** Check the workflow before step 3: if its `pull_request` trigger has no `types:` list, hold the PR until the review is clean, then open it ready and post the review verbatim as the PR's first comment—the audit trail is the point, and it survives the PR existing for a shorter time. Say in the description that the repo is unconverted. Converting that repo's CI is worth more than any one PR's runs.
+**In a repo whose CI does not yet skip drafts, every push to an open draft still runs it.** Check the workflow before step 3: if its `pull_request` trigger has no `types:` list, hold the PR until the review passes are done, then open it ready and post the review verbatim as the PR's first comment—the audit trail is the point, and it survives the PR existing for a shorter time. Say in the description that the repo is unconverted. Converting that repo's CI is worth more than any one PR's runs.
 
 ### Prove the checks ran on the commit you are merging
 
