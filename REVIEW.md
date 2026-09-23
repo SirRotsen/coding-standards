@@ -45,12 +45,16 @@ The reviewer posts its own comment where it can reach GitHub. Where it can't, th
 
 ## After a fix: when to re-review
 
-A review that produced changes does not automatically need a second review. The line:
+**A PR gets at most two review passes: one full review, then one fix check.** R.J.'s ruling, 2026-09-22: "half the time its reviews are well past the point of diminishing returns but it keeps going anyway."
 
-- **Typo, comment, rename, formatting**—no second review; mark the PR ready.
-- **Anything touching logic or control flow, and anything that touches what the review flagged**—back to a **new** fresh reviewer, at the model the fix's own complexity calls for, with the PR still in draft.
+The author answers the full review in one sweep—every finding fixed, or disagreed with in a reply on the PR—before anything else happens. Then:
 
-A fix CI forced after the PR was marked ready follows the same line: back to draft first, then re-review if the fix calls for it.
+- **Typo, comment, rename, formatting, or the PR description**—no fix check; mark the PR ready.
+- **Anything touching logic or control flow**—one fix check by a **new** fresh reviewer, at the model the fixes' own complexity calls for, with the PR still in draft. It is handed **"Check the fixes to the review on PR #N per REVIEW.md"** and checks only the review's findings and the code the fixes touched, not the whole PR again.
+
+After the fix check, the only findings still fixed before merge are the ones that would lose data, let one tenant reach another's, open a sign-in or permission gap, or crash a page. Everything else goes on the repo's worklist, or to R.J. as a question. No third pass runs unless R.J. asks for one.
+
+A fix CI forced after the PR was marked ready goes back to draft first. It gets a fix check only if it touches logic, and that check counts as the second pass if one has not already run.
 
 The reviewer who wrote the finding is not the one who checks the fix: it has now seen the author's reasoning about that code and is no longer fresh on it.
 
@@ -77,6 +81,8 @@ The reviewer who wrote the finding is not the one who checks the fix: it has now
 ## Findings
 
 Say what's wrong, where, and what it would cost. Distinguish "this will break" from "I'd have done it differently"—the second is worth saying once and never worth blocking on.
+
+Findings about the PR description itself—a stale file count, a blast-radius list that trails the diff, wording overtaken by a fix—are fixed before merge and never, on their own, call for a fix check.
 
 ---
 
