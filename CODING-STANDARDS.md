@@ -37,6 +37,8 @@ Work lands through a pull request, reviewed while still a draft and tested by CI
 7. Confirm CI actually ran on the PR's current commit—see below; a green PR is not proof of it.
 8. CI green: merge. CI red: `gh pr ready --undo`, fix, and go back to step 2. Whether that fix needs a second review is `REVIEW.md`'s call, not this list's.
 
+**Every `gh` command names its repository**—`-R OWNER/REPO`, or a `repos/OWNER/REPO/...` path with `gh api`. A bare PR number resolves against the checkout the command runs in, and a local session starts in HQ, whose own repository has no PRs, so an unnamed command lands in whichever repo has that number.
+
 **Ready means the local tests are green and the review passes are done**—never mark a PR ready to find out whether CI passes. CI time is billed per run, and the draft exists so the review loop costs none of it. R.J.'s ruling, 2026-09-17: "What I'm trying to prevent here is CONSTANT CI usage for tests."
 
 **In a repo whose CI does not yet skip drafts, every push to an open draft still runs it.** Check the workflow before step 3: if its `pull_request` trigger has no `types:` list, hold the PR until the review passes are done, then open it ready and post the review verbatim as the PR's first comment—the audit trail is the point, and it survives the PR existing for a shorter time. Say in the description that the repo is unconverted. Converting that repo's CI is worth more than any one PR's runs.

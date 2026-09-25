@@ -33,11 +33,13 @@ That assessment never reaches the reviewer. It selects who reviews; it is not pa
 
 A reviewer fetching this rubric by URL fetches the raw text (`curl` on the raw.githubusercontent.com address), never through a summarizing fetch tool—summarizers have paraphrased and garbled this document, and a review against a paraphrase is a review of a different rubric.
 
-A review is handed nothing but the repository and a number: **"Review PR #N per REVIEW.md"**. Nothing else—no summary, no context, no explanation of what the author was trying to do—because everything the reviewer is allowed to know is already in the repo and the PR description.
+A review is handed nothing but the repository and a number: **"Review OWNER/REPO PR #N per REVIEW.md"**, the repository always written out. Nothing else—no summary, no context, no explanation of what the author was trying to do—because everything the reviewer is allowed to know is already in the repo and the PR description.
 
 When the authoring session spawns the reviewer, that prompt is the whole prompt, verbatim. The author writes no framing of any kind—not the shape of the change, not how long it should take, and above all not that it is small. Handing the reviewer the author's own belief about the change defeats the point of asking someone else, and "this one's trivial" is the belief most likely to be the thing that's wrong.
 
 A reviewer never switches branches in the checkout it was handed—that checkout may be the one launchd and the CLIs run from. It reads the PR with `gh pr diff` or `git show origin/<branch>:<path>`, and runs it only in a throwaway `git worktree add --detach`, removed with `git worktree remove` when the review is done.
+
+A prompt that names no repository is incomplete: the reviewer asks for the repository and never searches for a PR by its number, because the same number exists in many repos. Every `gh` call the reviewer makes names the repository—`-R OWNER/REPO`, or a `repos/OWNER/REPO/...` path.
 
 ## The verdict lands on the PR
 
@@ -52,7 +54,7 @@ The reviewer posts its own comment where it can reach GitHub. Where it can't, th
 The author answers the full review in one sweep—every finding fixed, or disagreed with in a reply on the PR—before anything else happens. Then:
 
 - **Typo, comment, rename, formatting, or the PR description**—no fix check; mark the PR ready.
-- **Anything touching logic or control flow**—one fix check by a **new** fresh reviewer, at the model the fixes' own complexity calls for, with the PR still in draft. It is handed **"Check the fixes to the review on PR #N per REVIEW.md"** and checks only the review's findings and the code the fixes touched, not the whole PR again.
+- **Anything touching logic or control flow**—one fix check by a **new** fresh reviewer, at the model the fixes' own complexity calls for, with the PR still in draft. It is handed **"Check the fixes to the review on OWNER/REPO PR #N per REVIEW.md"** and checks only the review's findings and the code the fixes touched, not the whole PR again.
 
 After the fix check, the only findings still fixed before merge are the ones that would lose data, let one tenant reach another's, open a sign-in or permission gap, or crash a page. Everything else goes on the repo's worklist, or to R.J. as a question. No third pass runs unless R.J. asks for one.
 
