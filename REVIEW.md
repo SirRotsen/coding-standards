@@ -37,7 +37,7 @@ A review is handed nothing but the repository and a number: **"Review PR #N per 
 
 When the authoring session spawns the reviewer, that prompt is the whole prompt, verbatim. The author writes no framing of any kind—not the shape of the change, not how long it should take, and above all not that it is small. Handing the reviewer the author's own belief about the change defeats the point of asking someone else, and "this one's trivial" is the belief most likely to be the thing that's wrong.
 
-A reviewer that needs to run the code does it in a throwaway `git worktree`, never by switching branches in the checkout it was handed—that checkout may be the one launchd and the CLIs run from.
+A reviewer never switches branches in the checkout it was handed—that checkout may be the one launchd and the CLIs run from. It reads the PR with `gh pr diff` or `git show origin/<branch>:<path>`, and runs it only in a throwaway `git worktree add --detach`, removed with `git worktree remove` when the review is done.
 
 ## The verdict lands on the PR
 
