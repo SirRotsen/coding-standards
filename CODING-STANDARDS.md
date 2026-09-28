@@ -184,6 +184,10 @@ Body here.
 
 Answer in the thread and stay inside it. A message from the local agent is a conversation, not a new assignment—if it asks for work, that work still goes through the normal branch, PR, review, and merge gates.
 
+## Spelling
+
+American spelling, everywhere: behavior, color, center, organize. That covers code, comments, specs, copy, commits. R.J. is in the U.S.
+
 ## Writing for R.J.
 
 R.J. is not a coder. He is sharp about data design—how things relate, what belongs where, which distinctions are real—and every ruling on the model is his. What loses him is jargon. A sentence packed with class names, framework terms and acronyms does not read to him as precise; it reads as noise, and he stops taking it in.
