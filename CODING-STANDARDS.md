@@ -123,7 +123,7 @@ Run filtered tests while you work—the tests that reach what you touched. CI ho
 
 **Never delete an invariant test to get a run green.** An invariant test asserts something ruled and permanent—isolation between tenants, sign-in, a role ladder, a destructive-action guard, external truth. If one blocks you, stop and ask: it is either finding a real break or is a ruling you did not know about. A test that merely asserts the current shape of something still being designed is finished, not broken, when a ruling makes it false—delete it in the round that lands the ruling and say so in the commit message.
 
-**Write the replacement test before deleting the one it replaces, and run it.** In one audit, three of fourteen replacements asserted behaviour the product deliberately does not have, and only running them against today's code showed it.
+**Write the replacement test before deleting the one it replaces, and run it.** In one audit, three of fourteen replacements asserted behavior the product deliberately does not have, and only running them against today's code showed it.
 
 **Unpinned is not unused.** A class nothing appears to reference may still be a live runtime path or somebody's test fixture. Grep before removing, not after.
 
