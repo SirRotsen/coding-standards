@@ -119,6 +119,8 @@ Run filtered tests while you work—the tests that reach what you touched. CI ho
 
 **Every test traces to the spec or to an invariant.** A test that pins something the spec doesn't say—a sort order, exact wording, an internal shape—doesn't get written. One test per guarantee, not one per guard.
 
+**Tests are for the code, never the content.** Nothing about what a page, resource, or record says or contains gets a test: not its wording, its length, how many of something it has, or whether it has one at all. Code that handles content is tested against a made-up sample.
+
 **Every check must fail when it finds nothing to check.** A gate that passes by finding nothing is worse than no gate: it reports green. This rule is here because a `php -l` gate ran for months over a repo containing zero PHP files.
 
 **Never delete an invariant test to get a run green.** An invariant test asserts something ruled and permanent—isolation between tenants, sign-in, a role ladder, a destructive-action guard, external truth. If one blocks you, stop and ask: it is either finding a real break or is a ruling you did not know about. A test that merely asserts the current shape of something still being designed is finished, not broken, when a ruling makes it false—delete it in the round that lands the ruling and say so in the commit message.
